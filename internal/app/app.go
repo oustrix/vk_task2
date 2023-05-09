@@ -31,6 +31,7 @@ func (a *App) Run() {
 	if err != nil {
 		log.Fatalf("error while creating bot: %s", err)
 	}
+	log.Println("bot connected")
 
 	// DB connection.
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -39,12 +40,14 @@ func (a *App) Run() {
 	if err != nil {
 		log.Fatalf("error while connecting to db: %s", err)
 	}
+	log.Println("db connected")
 
 	// Migrate.
 	err = a.migrate()
 	if err != nil {
 		log.Fatalf("error while migrating: %s", err)
 	}
+	log.Println("db migrated")
 
 	// Service.
 	sRepository := serviceRepostiry.NewRepository(a.db)
