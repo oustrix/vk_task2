@@ -10,7 +10,7 @@ type serviceUsecase struct {
 }
 
 type Service interface {
-	List(*domain.User) ([]*domain.Service, error)
+	GetUserServices(*domain.User) ([]*domain.Service, error)
 	Create(*domain.Service) error
 }
 
@@ -20,7 +20,7 @@ func NewServiceUsecase(repository service.Repository) Service {
 	}
 }
 
-func (u *serviceUsecase) List(user *domain.User) ([]*domain.Service, error) {
+func (u *serviceUsecase) GetUserServices(user *domain.User) ([]*domain.Service, error) {
 	return u.repository.GetByUserID(user.ID)
 }
 
