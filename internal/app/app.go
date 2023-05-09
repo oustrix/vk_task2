@@ -16,6 +16,7 @@ type App struct {
 	bot      *tgbotapi.BotAPI
 	db       *gorm.DB
 	usecases *usecase.Usecases
+	updates  *tgbotapi.UpdatesChannel
 }
 
 func NewApp(cfg *config.Config) *App {
@@ -57,4 +58,14 @@ func (a *App) Run() {
 	a.usecases = &usecase.Usecases{
 		Service: sUsecase,
 	}
+
+	// Updates.
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+	updates, err := a.bot.GetUpdatesChan(u)
+	if err != nil {
+		log.Fatalf("error while getting updates: %s", err)
+	}
+	a.updates = &updates
+	log.Println("got updates channel")
 }
