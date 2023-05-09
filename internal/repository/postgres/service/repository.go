@@ -18,11 +18,11 @@ func NewRepository(db *gorm.DB) Repository {
 }
 
 func (r *serviceRepository) GetByUserID(userID int64) ([]*domain.Service, error) {
-	var services []*domain.Service
+	var services []*Service
 	err := r.db.Where("user_id = ?", userID).Find(&services).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return services, nil
+	return ToDomainList(services), nil
 }
