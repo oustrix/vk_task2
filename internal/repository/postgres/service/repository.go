@@ -11,6 +11,7 @@ type serviceRepository struct {
 
 type Repository interface {
 	GetByUserID(int64) ([]*domain.Service, error)
+	Create(*domain.Service) error
 }
 
 func NewRepository(db *gorm.DB) Repository {
@@ -24,5 +25,10 @@ func (r *serviceRepository) GetByUserID(userID int64) ([]*domain.Service, error)
 		return nil, err
 	}
 
-	return ToDomainList(services), nil
+	return toDomainList(services), nil
+}
+
+func (r *serviceRepository) Create(service *domain.Service) error {
+	s := fromDomain(service)
+	return r.db.Create(s).Error
 }
