@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"vk_task2/config"
+	"vk_task2/internal/handlers"
 	serviceRepostiry "vk_task2/internal/repository/postgres/service"
 	"vk_task2/internal/usecase"
 	postgresConnect "vk_task2/pkg/postgres"
@@ -68,4 +69,9 @@ func (a *App) Run() {
 	}
 	a.updates = &updates
 	log.Println("got updates channel")
+
+	// Handler.
+	handler := handlers.NewHandler(a.usecases, a.updates)
+	handler.HandleUpdates()
+
 }
