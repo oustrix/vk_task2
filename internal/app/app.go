@@ -6,13 +6,16 @@ import (
 	"gorm.io/gorm"
 	"log"
 	"vk_task2/config"
+	serviceRepostiry "vk_task2/internal/repository/postgres/service"
+	"vk_task2/internal/usecase"
 	postgresConnect "vk_task2/pkg/postgres"
 )
 
 type App struct {
-	cfg *config.Config
-	bot *tgbotapi.BotAPI
-	db  *gorm.DB
+	cfg      *config.Config
+	bot      *tgbotapi.BotAPI
+	db       *gorm.DB
+	usecases *usecase.Usecases
 }
 
 func NewApp(cfg *config.Config) *App {
@@ -41,5 +44,14 @@ func (a *App) Run() {
 	err = a.migrate()
 	if err != nil {
 		log.Fatalf("error while migrating: %s", err)
+	}
+
+	// Service.
+	sRepository := serviceRepostiry.NewRepository(a.db)
+	sUsecase := usecase.NewServiceUsecase(sRepository)
+
+	// Usecases.
+	a.usecases = &usecase.Usecases{
+		Service: sUsecase,
 	}
 }
