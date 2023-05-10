@@ -202,12 +202,12 @@ func (h *handler) handleGet(update tgbotapi.Update) tgbotapi.Chattable {
 		return msg
 	}
 
-	for i, service := range services {
-		msg.Text += "- Логин: `" + service.Login + "` | Пароль: `" + service.Password + "`"
-		if i != len(services)-1 {
-			msg.Text += "\n"
-		}
+	emoji := rune(128346)
+	for _, service := range services {
+		msg.Text += "- Логин: `" + service.Login + "` | Пароль: `" + service.Password + "`\n"
 	}
+
+	msg.Text += "\n" + "Данное сообщение будет удалено через 5 минут" + string(emoji)
 
 	return msg
 }
