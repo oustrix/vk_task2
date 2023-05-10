@@ -46,5 +46,5 @@ func (r *serviceRepository) Create(service *domain.Service) error {
 }
 
 func (r *serviceRepository) Delete(id int64, name string) error {
-	return r.db.Where("id = ? AND name = ?", id, name).Delete(&Service{}).Error
+	return r.db.Where("user_id = ? AND name = ?", id, name).Delete(&Service{}).Error
 }
