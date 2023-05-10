@@ -117,7 +117,9 @@ func (h *handler) handleMessage(update tgbotapi.Update) (tgbotapi.Chattable, *co
 }
 
 func (h *handler) handleStart(update tgbotapi.Update) (tgbotapi.Chattable, *config) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Приветствую! Я бот, который поможет Вам управлять Вашими паролями и логами. Для работы со мною используйте кнопки ниже, либо команды.")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Приветствую! "+
+		"Я бот, который поможет Вам управлять Вашими паролями и логами. "+
+		"Для работы со мною используйте кнопки ниже, либо команды.")
 	msg.ReplyMarkup = keyboards.Basic()
 	return msg, &config{}
 }
@@ -190,10 +192,10 @@ func (h *handler) handleSet(update tgbotapi.Update) (tgbotapi.Chattable, *config
 	msg.ParseMode = tgbotapi.ModeMarkdown
 
 	args := strings.Split(update.Message.CommandArguments(), " ")
-	if len(args) < 3 {
+	if len(args) < 3 { //nolint:gomnd
 		msg.Text = "Вы указали недостаточно параметров. Попробуйте еще раз."
 		return msg, &config{}
-	} else if len(args) > 3 {
+	} else if len(args) > 3 { //nolint:gomnd
 		msg.Text = "Вы указали слишком много параметров. Попробуйте еще раз."
 		return msg, &config{}
 	}
@@ -208,7 +210,7 @@ func (h *handler) handleSet(update tgbotapi.Update) (tgbotapi.Chattable, *config
 	err := h.uc.Service.Create(&service)
 	if err != nil {
 		log.Println(err)
-		msg.Text = "Произошла ошибка. Попробуйте позже."
+		msg.Text = "Произошла ошибка. Попробуйте позже." //nolint:goconst
 		return msg, &config{}
 	}
 
@@ -239,7 +241,7 @@ func (h *handler) handleGet(update tgbotapi.Update) (tgbotapi.Chattable, *config
 		return msg, &config{}
 	}
 
-	emoji := rune(128346)
+	emoji := rune(128346) //nolint:gomnd
 	for _, service := range services {
 		msg.Text += "- Логин: `" + service.Login + "` | Пароль: `" + service.Password + "`\n"
 	}
@@ -248,7 +250,7 @@ func (h *handler) handleGet(update tgbotapi.Update) (tgbotapi.Chattable, *config
 
 	cfg := &config{
 		isDelete:      true,
-		deleteTimeout: 5 * time.Minute,
+		deleteTimeout: 5 * time.Minute, //nolint:gomnd
 	}
 
 	return msg, cfg
