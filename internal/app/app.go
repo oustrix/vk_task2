@@ -71,7 +71,7 @@ func (a *App) Run() {
 	log.Println("got updates channel")
 
 	// Handler.
-	handler := handlers.NewHandler(a.usecases, a.updates)
+	handler := handlers.NewHandler(a.bot, a.usecases, a.updates)
 	handler.HandleUpdates()
 
 }

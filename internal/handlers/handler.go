@@ -2,6 +2,10 @@ package handlers
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"log"
+	"strings"
+	"vk_task2/internal/domain"
+	"vk_task2/internal/keyboards"
 	"vk_task2/internal/usecase"
 )
 
@@ -10,12 +14,14 @@ type Handler interface {
 }
 
 type handler struct {
+	bot     *tgbotapi.BotAPI
 	uc      *usecase.Usecases
 	updates *tgbotapi.UpdatesChannel
 }
 
-func NewHandler(uc *usecase.Usecases, updates *tgbotapi.UpdatesChannel) Handler {
+func NewHandler(bot *tgbotapi.BotAPI, uc *usecase.Usecases, updates *tgbotapi.UpdatesChannel) Handler {
 	return &handler{
+		bot:     bot,
 		uc:      uc,
 		updates: updates,
 	}
@@ -23,10 +29,186 @@ func NewHandler(uc *usecase.Usecases, updates *tgbotapi.UpdatesChannel) Handler 
 
 func (h *handler) HandleUpdates() {
 	for update := range *h.updates {
-		go h.handleUpdate(update)
+		if update.Message == nil && update.CallbackQuery == nil {
+			continue
+		}
+
+		go func(update tgbotapi.Update) {
+			msg := h.handleUpdate(update)
+			_, err := h.bot.Send(msg)
+			if err != nil {
+				log.Println(err)
+			}
+		}(update)
 	}
 }
 
-func (h *handler) handleUpdate(update tgbotapi.Update) {
+func (h *handler) handleUpdate(update tgbotapi.Update) tgbotapi.Chattable {
+	switch {
+	case update.Message.IsCommand():
+		return h.handleCommand(update)
+	case update.Message != nil && update.Message.Text != "":
+		return h.handleMessage(update)
+	default:
+		return h.handleUnknown(update)
+	}
+}
 
+func (h *handler) handleCommand(update tgbotapi.Update) tgbotapi.Chattable {
+	switch update.Message.Command() {
+	case "start":
+		return h.handleStart(update)
+	case "set":
+		return h.handleSet(update)
+	case "get":
+		return h.handleGet(update)
+	case "del":
+		return h.handleDelete(update)
+	default:
+		return h.handleUnknown(update)
+	}
+}
+
+func (h *handler) handleMessage(update tgbotapi.Update) tgbotapi.Chattable {
+	switch update.Message.Text {
+	case "Добавить":
+		return h.handleCreateHelp(update)
+	case "Получить":
+		return h.handleGetHelp(update)
+	case "Удалить":
+		return h.handleDeleteHelp(update)
+	case "Список сервисов":
+		return h.handleList(update)
+	default:
+		return h.handleUnknown(update)
+	}
+}
+
+func (h *handler) handleStart(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Приветствую! Я бот, который поможет Вам управлять Вашими паролями и логами. Для работы со мною используйте кнопки ниже, либо команды.")
+	msg.ReplyMarkup = keyboards.Basic()
+	return msg
+}
+
+func (h *handler) handleUnknown(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Я не понимаю, что Вы от меня хотите."+
+		"Для работы со мной используйте команды, либо кнопки снизу.")
+	msg.ReplyMarkup = keyboards.Basic()
+	return msg
+}
+
+func (h *handler) handleCreateHelp(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID,
+		"Для добавления нового логина и пароля используйте команду `/set`.\n\n"+
+			"Пример: `/set <имя сервиса> <логин> <пароль>`\n\n"+
+			"ВНИМАНИЕ: Имя сервиса, логин и пароль не должны содержать пробелов. ")
+	msg.ReplyMarkup = keyboards.Basic()
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	return msg
+}
+
+func (h *handler) handleGetHelp(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID,
+		"Для получения логина и пароля используйте команду `/get`.\n\n"+
+			"Пример: `/get <имя сервиса>`\n\n"+
+			"Список сохраненных сервисов можно посмотреть, нажав на кнопку `Список сервисов`. ")
+	msg.ReplyMarkup = keyboards.Basic()
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	return msg
+}
+
+func (h *handler) handleDeleteHelp(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID,
+		"Для удаления логинов и паролей для конкретного сервиса используйте команду `/delete`.\n\n"+
+			"Пример: `/del <имя сервиса>`\n\n"+
+			"Список сохраненных сервисов можно посмотреть, нажав на кнопку `Список сервисов`. ")
+	msg.ReplyMarkup = keyboards.Basic()
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	return msg
+}
+
+func (h *handler) handleList(update tgbotapi.Update) tgbotapi.Chattable {
+	list, err := h.uc.Service.GetUserServices(update.Message.Chat.ID)
+	if err != nil {
+		log.Println(err)
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+	}
+
+	if len(list) == 0 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "У Вас нет сохраненных сервисов.")
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Список Ваших сохраненных сервисов:\n")
+	for _, service := range list {
+		msg.Text += " - `" + service.Name + "`\n"
+	}
+	msg.ParseMode = tgbotapi.ModeMarkdown
+
+	return msg
+}
+
+func (h *handler) handleSet(update tgbotapi.Update) tgbotapi.Chattable {
+	args := strings.Split(update.Message.CommandArguments(), " ")
+	if len(args) < 3 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать один из параметров. Попробуйте еще раз.")
+	} else if len(args) > 3 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы указали слишком много параметров. Попробуйте еще раз.")
+	}
+
+	service := domain.Service{
+		Name:     args[0],
+		Login:    args[1],
+		Password: args[2],
+		UserID:   update.Message.Chat.ID,
+	}
+
+	err := h.uc.Service.Create(&service)
+	if err != nil {
+		log.Println(err)
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+	}
+
+	return tgbotapi.NewMessage(update.Message.Chat.ID, "Сервис успешно добавлен.")
+}
+
+func (h *handler) handleGet(update tgbotapi.Update) tgbotapi.Chattable {
+	args := strings.Split(update.Message.CommandArguments(), " ")
+	if len(args) < 1 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать имя сервиса. Попробуйте еще раз.")
+	}
+
+	services, err := h.uc.Service.GetUserServicesByName(update.Message.Chat.ID, args[0])
+	if err != nil {
+		log.Println(err)
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+	}
+
+	if len(services) == 0 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "У Вас нет сохраненных сервисов с таким именем.")
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	for i, service := range services {
+		msg.Text += "- Логин: `" + service.Login + "` | Пароль: `" + service.Password + "`"
+		if i != len(services)-1 {
+			msg.Text += "\n"
+		}
+	}
+
+	return msg
+}
+
+func (h *handler) handleDelete(update tgbotapi.Update) tgbotapi.Chattable {
+	args := strings.Split(update.Message.CommandArguments(), " ")
+	if len(args) < 1 {
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать имя сервиса. Попробуйте еще раз.")
+	}
+
+	err := h.uc.Service.Delete(update.Message.Chat.ID, args[0])
+	if err != nil {
+		log.Println(err)
+		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+	}
+
+	return tgbotapi.NewMessage(update.Message.Chat.ID, "Значения для указанного сервиса успешно удалены.")
 }
