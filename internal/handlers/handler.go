@@ -148,11 +148,17 @@ func (h *handler) handleList(update tgbotapi.Update) tgbotapi.Chattable {
 }
 
 func (h *handler) handleSet(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	msg.ReplyMarkup = keyboards.Basic()
+	msg.ParseMode = tgbotapi.ModeMarkdown
+
 	args := strings.Split(update.Message.CommandArguments(), " ")
 	if len(args) < 3 {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать один из параметров. Попробуйте еще раз.")
+		msg.Text = "Вы указали недостаточно параметров. Попробуйте еще раз."
+		return msg
 	} else if len(args) > 3 {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы указали слишком много параметров. Попробуйте еще раз.")
+		msg.Text = "Вы указали слишком много параметров. Попробуйте еще раз."
+		return msg
 	}
 
 	service := domain.Service{
@@ -165,29 +171,37 @@ func (h *handler) handleSet(update tgbotapi.Update) tgbotapi.Chattable {
 	err := h.uc.Service.Create(&service)
 	if err != nil {
 		log.Println(err)
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+		msg.Text = "Произошла ошибка. Попробуйте позже."
+		return msg
 	}
 
-	return tgbotapi.NewMessage(update.Message.Chat.ID, "Сервис успешно добавлен.")
+	msg.Text = "Сервис успешно добавлен."
+	return msg
 }
 
 func (h *handler) handleGet(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	msg.ParseMode = tgbotapi.ModeMarkdown
+	msg.ReplyMarkup = keyboards.Basic()
+
 	args := strings.Split(update.Message.CommandArguments(), " ")
 	if len(args) < 1 {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать имя сервиса. Попробуйте еще раз.")
+		msg.Text = "Вы забыли указать имя сервиса. Попробуйте еще раз."
+		return msg
 	}
 
 	services, err := h.uc.Service.GetUserServicesByName(update.Message.Chat.ID, args[0])
 	if err != nil {
 		log.Println(err)
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+		msg.Text = "Произошла ошибка. Попробуйте позже."
+		return msg
 	}
 
 	if len(services) == 0 {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "У Вас нет сохраненных сервисов с таким именем.")
+		msg.Text = "Сервис с таким названием не найден."
+		return msg
 	}
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	for i, service := range services {
 		msg.Text += "- Логин: `" + service.Login + "` | Пароль: `" + service.Password + "`"
 		if i != len(services)-1 {
@@ -199,16 +213,23 @@ func (h *handler) handleGet(update tgbotapi.Update) tgbotapi.Chattable {
 }
 
 func (h *handler) handleDelete(update tgbotapi.Update) tgbotapi.Chattable {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+	msg.ReplyMarkup = keyboards.Basic()
+	msg.ParseMode = tgbotapi.ModeMarkdown
+
 	args := strings.Split(update.Message.CommandArguments(), " ")
 	if len(args) < 1 {
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Вы забыли указать имя сервиса. Попробуйте еще раз.")
+		msg.Text = "Вы забыли указать имя сервиса. Попробуйте еще раз."
+		return msg
 	}
 
 	err := h.uc.Service.Delete(update.Message.Chat.ID, args[0])
 	if err != nil {
 		log.Println(err)
-		return tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка. Попробуйте позже.")
+		msg.Text = "Произошла ошибка. Попробуйте позже."
+		return msg
 	}
 
-	return tgbotapi.NewMessage(update.Message.Chat.ID, "Значения для указанного сервиса успешно удалены.")
+	msg.Text = "Значения для указанного сервиса успешно удалены."
+	return msg
 }
