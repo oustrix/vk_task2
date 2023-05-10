@@ -31,20 +31,20 @@ type (
 )
 
 func NewConfig() (*Config, error) {
-	var cfg *Config
+	cfg := &Config{}
 
 	err := godotenv.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	err = cleanenv.ReadConfig("./config/config.yml", &cfg)
+	err = cleanenv.ReadConfig("./config/config.yml", cfg)
 	if err != nil {
 		return nil, err
 	}
 
 	// Read sensitive data from environment variables.
-	err = cleanenv.ReadEnv(&cfg)
+	err = cleanenv.ReadEnv(cfg)
 	if err != nil {
 		return nil, err
 	}
