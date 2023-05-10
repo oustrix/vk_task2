@@ -17,12 +17,15 @@ type config struct {
 
 type Handler interface {
 	HandleUpdates()
+	Notify() <-chan error
+	Shutdown(timeout int)
 }
 
 type handler struct {
 	bot     *tgbotapi.BotAPI
 	uc      *usecase.Usecases
 	updates *tgbotapi.UpdatesChannel
+	notify  chan error
 }
 
 func NewHandler(bot *tgbotapi.BotAPI, uc *usecase.Usecases, updates *tgbotapi.UpdatesChannel) Handler {
@@ -30,7 +33,17 @@ func NewHandler(bot *tgbotapi.BotAPI, uc *usecase.Usecases, updates *tgbotapi.Up
 		bot:     bot,
 		uc:      uc,
 		updates: updates,
+		notify:  make(chan error, 1),
 	}
+}
+
+func (h *handler) Notify() <-chan error {
+	return h.notify
+}
+
+func (h *handler) Shutdown(timeout int) {
+	h.bot.StopReceivingUpdates()
+	time.Sleep(time.Duration(timeout) * time.Second)
 }
 
 func (h *handler) HandleUpdates() {
@@ -44,7 +57,8 @@ func (h *handler) HandleUpdates() {
 
 			sent, err := h.bot.Send(msg)
 			if err != nil {
-				log.Println(err)
+				h.notify <- err
+				close(h.notify)
 			}
 
 			if cfg.isDelete {
@@ -52,7 +66,8 @@ func (h *handler) HandleUpdates() {
 					time.Sleep(timeout)
 					_, err2 := h.bot.DeleteMessage(tgbotapi.NewDeleteMessage(chatID, messageID))
 					if err2 != nil {
-						log.Println(err2)
+						h.notify <- err2
+						close(h.notify)
 					}
 				}(sent.Chat.ID, sent.MessageID, cfg.deleteTimeout)
 			}

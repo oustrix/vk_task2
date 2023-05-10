@@ -7,7 +7,8 @@ import (
 
 type (
 	Config struct {
-		App      App `yaml:"app"`
+		App      App     `yaml:"app"`
+		Handler  Handler `yaml:"handler"`
 		Postgres Postgres
 		Bot      Bot
 	}
@@ -27,6 +28,10 @@ type (
 		User     string `env:"POSTGRES_USER" env-required:"true"`
 		Password string `env:"POSTGRES_PASSWORD" env-required:"true"`
 		Database string `env:"POSTGRES_DATABASE" env-required:"true"`
+	}
+
+	Handler struct {
+		ShutdownTimeout int `yaml:"shutdown_timeout" env:"HANDLER_SHUTDOWN_TIMEOUT" env-default:"5"`
 	}
 )
 

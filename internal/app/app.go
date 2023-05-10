@@ -5,6 +5,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"gorm.io/gorm"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"vk_task2/config"
 	"vk_task2/internal/handlers"
 	serviceRepostiry "vk_task2/internal/repository/postgres/service"
@@ -72,6 +75,20 @@ func (a *App) Run() {
 
 	// Handler.
 	handler := handlers.NewHandler(a.bot, a.usecases, a.updates)
-	handler.HandleUpdates()
+	go handler.HandleUpdates()
 
+	// All below is for graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case sig := <-interrupt:
+		log.Printf("interrupt signal: %s\n", sig.String())
+	case err = <-handler.Notify():
+		log.Printf("handler error: %s\n", err)
+	}
+
+	log.Println("shutting down")
+	handler.Shutdown(a.cfg.Handler.ShutdownTimeout)
+	log.Println("shutdown complete")
 }
